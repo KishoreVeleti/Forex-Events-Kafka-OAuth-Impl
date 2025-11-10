@@ -1,0 +1,139 @@
+#file: noinspection SpringBootApplicationYaml,SpellCheckingInspection
+spring:
+  datasource:
+    pg:
+      url: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/forex_db
+      jdbcUrl: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/forex_db
+      username: ${POSTGRES_USER:forex_user}
+      password: ${POSTGRES_PASSWORD:forex_pass}
+      driver-class-name: org.postgresql.Driver
+      hikari:
+        pool-name: HikariPool-PG
+        maximum-pool-size: 5
+        minimum-idle: 1
+
+    h2:
+      url: jdbc:h2:mem:forex_h2;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+      jdbcUrl: jdbc:h2:mem:forex_h2;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+      username: sa
+      password:
+      driver-class-name: org.h2.Driver
+      hikari:
+        pool-name: HikariPool-H2
+        maximum-pool-size: 3
+        minimum-idle: 1
+
+  kafka:
+    bootstrap-servers: dummy:0
+    # Common Kafka defaults (these are shared across all providers)
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      group-id: forex-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+otel:
+  service:
+    name: forex-events-kafka-oauth
+  exporter:
+    otlp:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}
+  logs:
+    exporter: none
+  metrics:
+    exporter: none
+
+forex:
+  kafka:
+    # Provider-specific Kafka brokers (each points to a different cluster)
+    brokers:
+      kafkaDefault: ${KAFKA_DEFAULT_BOOTSTRAP:localhost:9092}
+      keycloak: ${KAFKA_KEYCLOAK_BOOTSTRAP:localhost:9093}
+      google: ${KAFKA_GOOGLE_BOOTSTRAP:localhost:9094}
+      github: ${KAFKA_GITHUB_BOOTSTRAP:localhost:9095}
+      microsoft: ${KAFKA_MICROSOFT_BOOTSTRAP:localhost:9096}
+
+    # 👇 Provider-specific topic names
+    topics:
+      kafkaDefault: oauth.kafkaDefault.events
+      keycloak: oauth.keycloak.events
+      google: oauth.google.events
+      github: oauth.github.events
+      microsoft: oauth.microsoft.events
+      audit: oauth.audit
+      errors: oauth.errors
+    oauth:
+      # No OAuth for kafkaDefault i.e. no SASL/OAUTHBEARER configured
+      keycloak:
+        token-endpoint: http://localhost:8081/realms/forex/protocol/openid-connect/token
+        client-id: forex-keycloak-client
+        client-secret: forex-secret
+      google:
+        token-endpoint: https://accounts.google.com/o/oauth2/token
+        client-id: forex-google-client
+        client-secret: forex-secret
+      github:
+        token-endpoint: https://github.com/login/oauth/access_token
+        client-id: forex-github-client
+        client-secret: forex-secret
+      microsoft:
+        # These values come from uour Laptop envrionment variables - Microsoft Entra ID (Azure AD) OAuth configuration
+        token-endpoint: https://login.microsoftonline.com/${KAFKA_OAUTHBEARER_IMPL_TENANT_ID:UN_DEFINED_OAUTHBEARER_IMPL_TENANT_ID}/oauth2/v2.0/token
+        client-id: ${KAFKA_OAUTHBEARER_IMPL_CLIENT_ID:forex-microsoft-client}
+        client-secret: ${KAFKA_OAUTHBEARER_IMPL_CLIENT_SECRET:forex-secret}
+
+feature:
+  toggles:
+    kafka:
+      oauth_provider:
+        kafkaDefault:
+          enabled: true
+        keycloak:
+          enabled: false
+        google:
+          enabled: false
+        github:
+          enabled: false
+        microsoft:
+          enabled: false
+
+      consumers:
+        oauth_provider:
+          kafkaDefault:
+            enabled: true
+          keycloak:
+            enabled: false
+          google:
+            enabled: false
+          github:
+            enabled: false
+          microsoft:
+            enabled: false
+
+      producers:
+        oauth_provider:
+          kafkaDefault:
+            enabled: true
+          keycloak:
+            enabled: false
+          google:
+            enabled: false
+          github:
+            enabled: false
+          microsoft:
+            enabled: false
+
+management:
+  tracing:
+    enabled: true
+  otlp:
+    tracing:
+      endpoint: ${OTEL_COLLECTOR_GRPC_ENDPOINT:http://localhost:4317}
+      protocol: grpc
+  prometheus:
+    metrics:
+      export:
+        enabled: true

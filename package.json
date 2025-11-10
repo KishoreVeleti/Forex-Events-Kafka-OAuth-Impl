@@ -1,0 +1,29 @@
+{
+  "name": "forex-events-kafka-oauth-impl",
+  "version": "1.0.0",
+  "description": "Task runner for build, run, docker, and deployment lifecycle of Forex Events Kafka OAuth Implementation.",
+  "scripts": {
+    "clean": "mvn clean",
+    "compile": "mvn compile",
+    "test": "mvn test",
+    "build": "mvn clean install package -DskipTests",
+    "run:local": "SPRING_PROFILES_ACTIVE=local java -jar target/forex-events-kafka-oauth-impl-1.0.0.jar",
+    "infra:up": "bash -c 'if [ -z \"$KAFKA_OAUTHBEARER_IMPL_PROFILES\" ]; then echo \" No profiles set — running default services...\"; docker compose -f devops/deployment/local-dev/docker-compose.local.yml up -d; else echo \" Using profiles: $KAFKA_OAUTHBEARER_IMPL_PROFILES\"; docker compose -f devops/deployment/local-dev/docker-compose.local.yml $(echo $KAFKA_OAUTHBEARER_IMPL_PROFILES | awk -F, \"{for(i=1;i<=NF;i++) printf \\\"--profile %s \\\", $i}\") up -d; fi'",
+    "infra:down": "bash -c 'if [ -z \"$KAFKA_OAUTHBEARER_IMPL_PROFILES\" ]; then echo \" Stopping default services...\"; docker compose -f devops/deployment/local-dev/docker-compose.local.yml down -v --remove-orphans; else echo \" Stopping profiles: $KAFKA_OAUTHBEARER_IMPL_PROFILES\"; docker compose -f devops/deployment/local-dev/docker-compose.local.yml $(echo $KAFKA_OAUTHBEARER_IMPL_PROFILES | awk -F, \"{for(i=1;i<=NF;i++) printf \\\"--profile %s \\\", $i}\") down -v --remove-orphans; fi'",
+    "infra:restart": "npm run infra:down && npm run infra:up",
+    "infra-skycloak:up": "docker compose -f devops/deployment/local-dev/skycloak/docker-compose.yaml up -d",
+    "infra-skycloak:down": "docker compose -f devops/deployment/local-dev/skycloak/docker-compose.yaml down -v --remove-orphans",
+    "publish:image": "mvn compile jib:build -DskipTests -Djib.skip=false",
+    "publish:helm": "helm package devops/helm/forex-events-kafka-oauth && helm repo index .",
+    "deploy:stg": "helm upgrade --install forex-oauth forex-events-kafka-oauth -f devops/helm/forex-events-kafka-oauth/values-stg.yaml --namespace stg --create-namespace",
+    "deploy:prod": "helm upgrade --install forex-oauth forex-events-kafka-oauth -f devops/helm/forex-events-kafka-oauth/values-prod.yaml --namespace prod --create-namespace",
+    "publish:trades": "curl -X POST http://localhost:8080/api/forex/publish",
+    "smoketest": "curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/actuator/health | grep 200 && echo '✅ Health OK' || echo '❌ Health check failed'",
+    "logs": "docker logs -f forex-oauth-app",
+    "dev:local": "npm run infra:up && sleep 10 && npm run run:local"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "Apache-2.0"
+}
