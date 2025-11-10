@@ -50,7 +50,7 @@ jobs:
             fi
           fi
 
-          echo "New version: $NEW_VERSION" | tee $VERSION_FILE
+          echo "$NEW_VERSION" | tee $VERSION_FILE
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
 
           # Commit and tag new version
@@ -80,13 +80,15 @@ jobs:
           echo "FULL_TAG=${FULL_TAG}" >> $GITHUB_OUTPUT
           echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Build and push Docker image
+      - name: Build and push multi-arch Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: devops/deployment/prod/dockerhub/Dockerfile
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
             ${{ steps.vars.outputs.IMAGE_NAME }}:${{ steps.vars.outputs.FULL_TAG }}
             ${{ steps.vars.outputs.IMAGE_NAME }}:${{ steps.vars.outputs.VERSION }}
             ${{ steps.vars.outputs.IMAGE_NAME }}:latest
+
