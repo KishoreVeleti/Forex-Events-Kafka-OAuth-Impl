@@ -1,0 +1,46 @@
+name: Production Publish to Docker Hub
+
+on:
+  # Manual trigger (on demand)
+  workflow_dispatch:
+
+  # Auto trigger when pushing to main or tagging a release
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Define image name and timestamp tag
+        id: vars
+        run: |
+          IMAGE_NAME=kishoreveleti/forex-events-kafka-oauth-impl
+          TIMESTAMP=$(date +"%Y-%m-%d-%H-%M-%S")
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_OUTPUT
+          echo "TIMESTAMP=${TIMESTAMP}" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.vars.outputs.IMAGE_NAME }}:${{ steps.vars.outputs.TIMESTAMP }}
+            ${{ steps.vars.outputs.IMAGE_NAME }}:latest
